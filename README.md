@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NaroBlog
 
-## Getting Started
+A Medium-style publishing frontend built with Next.js 16.4.2, React 19.3,
+TypeScript, Tailwind CSS v4, and shadcn/Base UI components.
 
-First, run the development server:
+## Local development
+
+Install dependencies and start the development server:
 
 ```bash
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run lint       # ESLint checks
+npx tsc --noEmit   # TypeScript checks
+npm run build     # Production build
+npm start         # Serve the production build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The build uses `next/font/google` to download Bricolage Grotesque and Literata,
+so it requires access to Google Fonts.
 
-## Learn More
+## Project structure
 
-To learn more about Next.js, take a look at the following resources:
+- `app/(marketing)/(index)/page.tsx`: homepage and post feed.
+- `app/(marketing)/blog/[slug]/`: individual article pages.
+- `app/(marketing)/categories/`: category directory and filtered post feeds.
+- `app/(marketing)/(auth)/`: sign-in, registration, password recovery,
+  email verification, and access-denied screens.
+- `app/(marketing)/contact/`: contact page and form.
+- `app/dashboard/`: author dashboard.
+- `app/admin/dashboard/`: admin dashboard.
+- `components/site/`: shared navigation, footer, post list, dashboard shell,
+  and theme toggle.
+- `components/ui/`: reusable UI primitives.
+- `lib/data/demo/`: typed demo posts and categories.
+- `app/globals.css`: design tokens, typography, and light/dark themes.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Public pages share the marketing layout. Author and admin layouts use
+`AdminShell` with different navigation. The root layout provides system-aware
+light/dark theme switching through `next-themes`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Current functionality
 
-## Deploy on Vercel
+The public feed and category pages read static demo data. Article pages resolve
+posts by slug and use shared placeholder body text. Unknown article and category
+slugs render the marketing not-found page.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Account and contact forms are UI scaffolding without submission handlers.
+Dashboard identities, statistics, and activity are mocked. Authentication,
+authorization, persistence, publishing, and email delivery are not implemented.
+The shell's role prop selects navigation only; it does not restrict access.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Author pages include post browsing, creation, editing, activity, and profile forms.
+Admin pages include contacts, users, categories, posts, sessions, activities, and
+profile settings. Tables support client-side search and filters; contact messages
+can be opened and posts can be selected for editing. These screens use demo data
+and forms do not persist changes. Sign-out remains unimplemented.
+
+## Next.js conventions
+
+React Compiler, Cache Components, and partial prefetching are enabled in
+`next.config.ts`. Before changing framework-specific code, follow `AGENTS.md`
+and read the relevant documentation bundled in `node_modules/next/dist/docs/`.

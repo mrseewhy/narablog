@@ -1,26 +1,178 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@source "../node_modules/@blocknote/shadcn";
+
+/* Dark mode is controlled by a .dark class on <html> (theme toggle) */
+@custom-variant dark (&:is(.dark *));
+
+/*
+  NAROBLOG DESIGN SYSTEM
+
+  Ink    #0B1220  very dark blue (dark background, light text)
+  Paper  #F8F9FC  almost white (light background)
+  Amber  #B45309 (light) / #F5B544 (dark)  single accent, used for primary actions, links and focus
+*/
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --radius: 0.5rem;
+
+  --background: #f8f9fc;
+  --foreground: #0b1220;
+
+  --card: #ffffff;
+  --card-foreground: #0b1220;
+
+  --popover: #ffffff;
+  --popover-foreground: #0b1220;
+
+  --primary: #b45309;
+  --primary-foreground: #ffffff;
+
+  --secondary: #eef1f7;
+  --secondary-foreground: #0b1220;
+
+  --muted: #eef1f7;
+  --muted-foreground: #566175;
+
+  --accent: #e6eaf3;
+  --accent-foreground: #0b1220;
+
+  --destructive: #c62828;
+
+  --border: #dce1ec;
+  --input: #dce1ec;
+  --ring: #b45309;
+
+  --sidebar: #f1f4fa;
+  --sidebar-foreground: #0b1220;
+  --sidebar-primary: #b45309;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e6eaf3;
+  --sidebar-accent-foreground: #0b1220;
+  --sidebar-border: #dce1ec;
+  --sidebar-ring: #b45309;
+}
+
+.dark {
+  --background: #0b1220;
+  --foreground: #eceff6;
+
+  --card: #111a2e;
+  --card-foreground: #eceff6;
+
+  --popover: #111a2e;
+  --popover-foreground: #eceff6;
+
+  --primary: #f5b544;
+  --primary-foreground: #0b1220;
+
+  --secondary: #172136;
+  --secondary-foreground: #eceff6;
+
+  --muted: #172136;
+  --muted-foreground: #9aa5ba;
+
+  --accent: #1b2740;
+  --accent-foreground: #eceff6;
+
+  --destructive: #f87171;
+
+  --border: #1f2a42;
+  --input: #26334f;
+  --ring: #f5b544;
+
+  --sidebar: #0e1628;
+  --sidebar-foreground: #eceff6;
+  --sidebar-primary: #f5b544;
+  --sidebar-primary-foreground: #0b1220;
+  --sidebar-accent: #1b2740;
+  --sidebar-accent-foreground: #eceff6;
+  --sidebar-border: #1f2a42;
+  --sidebar-ring: #f5b544;
 }
 
 @theme inline {
+  /* Fonts: Bricolage Grotesque for UI and headings, Literata for article reading */
+  --font-sans: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-literata), ui-serif, Georgia, serif;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply tracking-tight;
   }
 }
 
-body {
+/* Keep the formatting controls above the writing area. */
+.post-content-editor .bn-container {
+  display: flex;
+  flex-direction: column-reverse;
+  font-family: var(--font-sans);
+}
+
+.post-content-editor .bn-formatting-toolbar {
+  width: 100%;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--card);
+  padding: 0.5rem;
+  box-shadow: none;
+}
+
+.post-content-editor .bn-editor {
+  min-height: 24rem;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  padding-block: 1.25rem;
+  padding-inline: 3rem 1.5rem;
+  font-family: var(--font-serif);
 }
