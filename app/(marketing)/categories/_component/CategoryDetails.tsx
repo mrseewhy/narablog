@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 
-import { categories } from "../../../../lib/data/demo/categories";
 import { posts } from "../../../../lib/data/demo/posts";
 import PostList from "../../../../components/site/post-list";
+import { getCategoryDal } from "@/lib/data/dal/category.dal";
 
 const CategoryDetails = async ({
   params,
@@ -10,7 +10,7 @@ const CategoryDetails = async ({
   params: Promise<{ slug: string }>;
 }) => {
   const { slug } = await params;
-  const category = categories.find((item) => item.slug === slug);
+  const category = await getCategoryDal(slug);
 
   if (!category) notFound();
 
