@@ -1,8 +1,9 @@
 import CategoryCard from "./_component/CategoryCard";
-import { getCategoriesDAL } from "@/lib/data/dal/category.dal";
+import { CategoriesEmptyState } from "@/components/site/categories-empty-state";
+import { getCategoryDirectoryDAL } from "@/lib/data/dal/category.dal";
 
 const CategoriesPage = async () => {
-  const categories = await getCategoriesDAL();
+  const categories = await getCategoryDirectoryDAL();
 
   return (
     <>
@@ -17,6 +18,7 @@ const CategoriesPage = async () => {
       </header>
 
       <section className="mx-auto mt-10 grid w-full max-w-7xl gap-4 px-4 sm:grid-cols-2 lg:grid-cols-3">
+        {categories.length === 0 && <CategoriesEmptyState />}
         {categories.map((category) => (
           <CategoryCard key={category.publicId} category={category} />
         ))}

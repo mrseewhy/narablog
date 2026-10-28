@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  distDir: process.env.AUTH_E2E_DIST_DIR || ".next",
+  typescript: {
+    tsconfigPath: process.env.AUTH_E2E_TSCONFIG || "tsconfig.json",
+  },
   experimental: {
     agentFeedback: true,
   },

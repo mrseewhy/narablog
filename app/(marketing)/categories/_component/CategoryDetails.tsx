@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 
-import { posts } from "../../../../lib/data/demo/posts";
+import { getPublicPosts } from "@/lib/data/dal/post.dal";
 import PostList from "../../../../components/site/post-list";
 import { getCategoryDal } from "@/lib/data/dal/category.dal";
 
@@ -14,7 +14,7 @@ const CategoryDetails = async ({
 
   if (!category) notFound();
 
-  const categoryPosts = posts.filter((post) => post.category === category.name);
+  const categoryPosts = await getPublicPosts(category.publicId);
   const count = categoryPosts.length;
 
   return (
@@ -35,9 +35,16 @@ const CategoryDetails = async ({
       {count > 0 ? (
         <PostList items={categoryPosts} />
       ) : (
-        <p className="mx-auto mt-12 w-full max-w-3xl px-4 text-muted-foreground">
-          No posts in this category yet.
-        </p>
+        <section className="mx-auto mt-12 w-full max-w-3xl px-4">
+          <div className="rounded-xl border bg-card px-6 py-12 text-center">
+            <h2 className="text-xl font-semibold">
+              No posts in this category yet
+            </h2>
+            <p className="mt-2 text-muted-foreground">
+              Check back soon for new stories on this topic.
+            </p>
+          </div>
+        </section>
       )}
     </>
   );

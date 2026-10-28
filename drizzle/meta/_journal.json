@@ -22,6 +22,34 @@
       "when": 1792783006134,
       "tag": "0002_slippery_gravity",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792890338134,
+      "tag": "0003_workable_dragon_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793091819513,
+      "tag": "0004_small_jimmy_woo",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793141086732,
+      "tag": "0005_lying_mister_fear",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793141519092,
+      "tag": "0006_lazy_betty_brant",
+      "breakpoints": true
     }
   ]
 }

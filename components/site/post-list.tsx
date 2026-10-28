@@ -16,7 +16,7 @@ const getInitials = (name: string) =>
     .map((part) => part[0])
     .join("");
 
-const PostList = ({ items = posts }: { items?: Post[] }) => {
+const PostList = ({ items = posts }: { items?: (Omit<Post, "id" | "category"> & { id: string | number; category: string })[] }) => {
   return (
     <section className="mx-auto mt-12 w-full  px-4">
       <ul className="divide-y">

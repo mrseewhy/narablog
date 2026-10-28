@@ -6,7 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "auth:bootstrap": "node --experimental-strip-types scripts/bootstrap-admin.mjs",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "test:auth": "node tests/auth.e2e.mjs",
+    "test:unit": "node --test tests/*.test.mjs",
+    "test": "npm run test:unit && npm run test:auth"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

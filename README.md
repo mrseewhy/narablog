@@ -46,20 +46,20 @@ light/dark theme switching through `next-themes`.
 
 ## Current functionality
 
-The public feed and category pages read static demo data. Article pages resolve
-posts by slug and use shared placeholder body text. Unknown article and category
-slugs render the marketing not-found page.
+Authentication includes registration, required email verification, sign-in,
+sign-out, password recovery, password changes, verified email changes, and
+persisted profile updates. Admin user and session management use real records.
+The initial administrator is assigned by a local, controlled bootstrap script.
 
-Account and contact forms are UI scaffolding without submission handlers.
-Dashboard identities, statistics, and activity are mocked. Authentication,
-authorization, persistence, publishing, and email delivery are not implemented.
-The shell's role prop selects navigation only; it does not restrict access.
+Post creation, editing, deletion, private lists, and public published feeds use
+PostgreSQL. Authors can manage only their own posts; administrators can manage
+all posts. Category creation is admin-only. Contact submissions are persisted,
+but the contact inbox and activity screens still use demo data.
 
-Author pages include post browsing, creation, editing, activity, and profile forms.
-Admin pages include contacts, users, categories, posts, sessions, activities, and
-profile settings. Tables support client-side search and filters; contact messages
-can be opened and posts can be selected for editing. These screens use demo data
-and forms do not persist changes. Sign-out remains unimplemented.
+Local email delivery prints links only to the server terminal. Email-dependent
+requests are disabled on deployed hosts until a provider such as Resend is
+connected. See [authentication setup, security, and verification](docs/authentication.md)
+for migrations, bootstrap instructions, configuration, and test commands.
 
 ## Next.js conventions
 

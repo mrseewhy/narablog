@@ -1,10 +1,50 @@
+import { desc, sql } from "drizzle-orm";
 import Link from "next/link";
-import { Plus } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
-import { demoUsers } from "@/lib/data/demo/dashboard";
-import { DataTable } from "./data-table";
-import { Badge, PageHeading, Stats } from "./ui";
+import { db } from "@/lib/data";
+import { user } from "@/lib/data/auth-schema";
+import { requireAdminSession } from "@/lib/data/security/session";
+import { UserManagement } from "./user-management";
 
-export function UsersPage() {
-  return <div className="space-y-8"><PageHeading title="Users" description="Explore your community of authors, editors, and readers."><Link href="/admin/users/create" className={buttonVariants()}><Plus className="size-4" /> Create user</Link></PageHeading><Stats items={[{ label: "Total users", value: demoUsers.length }, { label: "Active", value: demoUsers.filter(user => user.status === "Active").length }, { label: "Pending", value: demoUsers.filter(user => user.status === "Pending").length }, { label: "Suspended", value: demoUsers.filter(user => user.status === "Suspended").length }]} /><DataTable label="Users" filters={["Active", "Pending", "Suspended"]} columns={["User", "Role", "Posts", "Joined", "Status"]} rows={demoUsers.map(user => ({ id: user.id, search: `${user.name} ${user.email} ${user.role}`, filter: user.status, cells: [<div key="user" className="flex items-center gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 font-semibold text-primary">{user.name.split(" ").map(part => part[0]).join("")}</span><div><p className="font-medium">{user.name}</p><p className="mt-1 text-xs text-muted-foreground">{user.email}</p></div></div>, <Badge key="role">{user.role}</Badge>, user.posts, user.joined, <Badge key="status">{user.status}</Badge>] }))} /></div>;
+export async function UsersPage({ page = 1 }: { page?: number }) {
+  const current = await requireAdminSession();
+  const records = await db
+    .select({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      banned: user.banned,
+      emailVerified: user.emailVerified,
+    })
+    .from(user)
+    .orderBy(desc(user.createdAt))
+    .limit(25)
+    .offset((page - 1) * 25);
+  const [total] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(user);
+  return (
+    <div className="space-y-6">
+      <UserManagement users={records} currentId={current.user.id} />
+      <nav className="flex items-center gap-5" aria-label="User pages">
+        {page > 1 && (
+          <Link
+            className="text-primary underline"
+            href={`/admin/users?page=${page - 1}`}
+          >
+            Previous
+          </Link>
+        )}
+        <span>Page {page}</span>
+        {page * 25 < total.count && (
+          <Link
+            className="text-primary underline"
+            href={`/admin/users?page=${page + 1}`}
+          >
+            Next
+          </Link>
+        )}
+      </nav>
+    </div>
+  );
 }

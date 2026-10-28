@@ -4,11 +4,13 @@ import type { CreateCategoryInput } from "@/lib/data/validation/category.validat
 
 type Category = Omit<CreateCategoryInput, "description"> & {
   publicId: string;
+  publishedCount: number;
   description: string | null;
   slug: string;
 };
 
 const CategoryCard = ({ category }: { category: Category }) => {
+  const count = category.publishedCount;
   return (
     <>
       <Link
@@ -22,9 +24,11 @@ const CategoryCard = ({ category }: { category: Category }) => {
           </p>
         </div>
         <div className="flex items-center justify-between text-sm text-muted-foreground">
-          {/* <span>
-            {count} {count === 1 ? "post" : "posts"}
-          </span> */}
+          <span>
+            {count === 0
+              ? "No posts yet"
+              : `${count} ${count === 1 ? "post" : "posts"}`}
+          </span>
           <ArrowUpRight className="size-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary" />
         </div>
       </Link>

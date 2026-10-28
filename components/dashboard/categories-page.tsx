@@ -1,64 +1,91 @@
+import { Suspense } from "react";
 import Link from "next/link";
-import { ArrowUpRight, Tags, Plus } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-// import { categories } from "@/lib/data/demo/categories";
-import { posts } from "@/lib/data/demo/posts";
-import { Badge, PageHeading, Stats } from "./ui";
-import { getCategoriesDAL } from "@/lib/data/dal/category.dal";
-
-export async function CategoriesPage() {
-  const categories = await getCategoriesDAL();
+import { CategoriesEmptyState } from "@/components/site/categories-empty-state";
+import { getAdminCategoriesDAL } from "@/lib/data/dal/category.dal";
+import { CategoryDeleteButton } from "./category-delete-button";
+import { DashboardPageSkeleton } from "./page-skeleton";
+import { PageHeading, Stats } from "./ui";
+async function Content() {
+  const categories = await getAdminCategoriesDAL();
   return (
     <div className="space-y-8">
       <PageHeading
         title="Categories"
-        description="Organise the topics that bring your stories together."
+        description="Manage topics and the posts assigned to them."
       >
         <Link href="/admin/categories/create" className={buttonVariants()}>
-          <Plus className="size-4" /> Create category
+          Create category
         </Link>
       </PageHeading>
       <Stats
         items={[
           { label: "Categories", value: categories.length },
-          { label: "Published posts", value: posts.length },
-          { label: "Featured topic", value: "Technology" },
-          { label: "Uncategorised posts", value: 0 },
+          {
+            label: "Published posts",
+            value: categories.reduce((n, c) => n + c.publishedCount, 0),
+          },
+          {
+            label: "Drafts",
+            value: categories.reduce(
+              (n, c) => n + c.totalCount - c.publishedCount,
+              0,
+            ),
+          },
+          {
+            label: "Empty categories",
+            value: categories.filter((c) => c.totalCount === 0).length,
+          },
         ]}
       />
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        {categories.length === 0 && <CategoriesEmptyState admin />}
         {categories.map((category) => (
           <section
             key={category.publicId}
-            className="flex flex-col rounded-xl border bg-card p-6 shadow-sm"
+            className="flex flex-col rounded-xl border bg-card p-6"
           >
-            <div className="mb-5 flex items-center justify-between">
-              <span className="rounded-lg bg-primary/10 p-3 text-primary">
-                <Tags className="size-5" aria-hidden="true" />
-              </span>
-              <Badge>
-                {posts.filter((post) => post.category === category.name).length}{" "}
-                posts
-              </Badge>
-            </div>
             <h2 className="text-xl font-semibold">{category.name}</h2>
-            <p className="mt-2 flex-1 text-sm leading-6 text-muted-foreground">
-              {category.description}
+            <p className="mt-3 flex-1 text-sm text-muted-foreground">
+              {category.description || "No description."}
             </p>
-            <div className="mt-6 flex items-center justify-between gap-3 border-t pt-4">
-              <span className="text-xs text-muted-foreground">
-                /{category.slug}
-              </span>
+            <p className="mt-4 text-sm">
+              {category.publishedCount} published ·{" "}
+              {category.totalCount - category.publishedCount} drafts
+            </p>
+            <Link
+              href={`/categories/${category.slug}`}
+              className="mt-3 break-all text-sm text-primary underline"
+            >
+              /categories/{category.slug}
+            </Link>
+            <div className="mt-5 border-t pt-4">
               <Link
-                href={`/categories/${category.slug}`}
-                className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+                href={`/admin/categories/${category.publicId}/edit`}
+                className={buttonVariants({
+                  variant: "outline",
+                  size: "sm",
+                  className: "mb-3",
+                })}
               >
-                View category <ArrowUpRight className="size-4" />
+                Edit category
               </Link>
+              <CategoryDeleteButton
+                publicId={category.publicId}
+                name={category.name}
+                totalCount={category.totalCount}
+              />
             </div>
           </section>
         ))}
       </div>
     </div>
+  );
+}
+export function CategoriesPage() {
+  return (
+    <Suspense fallback={<DashboardPageSkeleton />}>
+      <Content />
+    </Suspense>
   );
 }

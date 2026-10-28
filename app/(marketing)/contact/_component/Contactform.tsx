@@ -24,18 +24,17 @@ const ContactForm = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (loading) return;
     const form = e.currentTarget;
     const data = new FormData(form);
     const formData = Object.fromEntries(data.entries());
     const result = contactSchema.safeParse(formData);
+    setErrors({});
     if (!result.success) {
       setErrors(result.error.flatten().fieldErrors);
       return;
     }
 
-    if (result.data?.contact_extra_reference !== "") {
-      return;
-    }
     setLoading(true);
     try {
       const data = await createContactAction(result.data);
@@ -49,8 +48,7 @@ const ContactForm = () => {
       form.reset();
       setErrors({});
       setSubmitted(true);
-    } catch (error) {
-      console.error(error);
+    } catch {
       toast.error("Something went wrong");
     } finally {
       setLoading(false);
@@ -85,8 +83,7 @@ const ContactForm = () => {
           Thank you for reaching out!
         </h2>
         <p className="mt-4 max-w-sm font-serif text-lg text-muted-foreground">
-          Your message has been sent successfully. We usually reply within two
-          business days.
+          Your message has been saved. We’ll review it soon.
         </p>
       </section>
     );
@@ -95,102 +92,135 @@ const ContactForm = () => {
   return (
     <form
       onSubmit={handleSubmit}
+      aria-busy={loading}
       className="space-y-5 rounded-2xl border bg-card p-6 md:p-8"
     >
-      {/* Honeypot: hidden from people, bots tend to fill it in. Reject the submission on the server if it has a value. */}
-      <div
-        aria-hidden="true"
-        className="absolute left-[-9999px] h-0 w-0 overflow-hidden"
-      >
-        <label htmlFor="contact_extra_reference">Leave this field empty</label>
-        <input
-          id="contact_extra_reference"
-          name="contact_extra_reference"
-          type="text"
-          tabIndex={-1}
-          autoComplete="off"
-          defaultValue=""
-          hidden
+      <fieldset disabled={loading} className="space-y-5">
+        {/* Honeypot: hidden from people, bots tend to fill it in. Reject the submission on the server if it has a value. */}
+        <div
           aria-hidden="true"
-        />
-      </div>
-
-      <div className="grid gap-5 sm:grid-cols-2">
-        <div className="">
-          <label htmlFor="name" className="text-sm font-medium">
-            Name
+          className="absolute left-[-9999px] h-0 w-0 overflow-hidden"
+        >
+          <label htmlFor="contact_extra_reference">
+            Leave this field empty
           </label>
           <input
-            id="name"
-            name="name"
+            id="contact_extra_reference"
+            name="contact_extra_reference"
             type="text"
-            placeholder="Your name"
-            autoComplete="name"
-            required
-            onChange={handleChange}
-            className={`${fieldClass} h-11`}
+            tabIndex={-1}
+            autoComplete="off"
+            defaultValue=""
+            aria-hidden="true"
           />
-          {errors.name && (
-            <span className="text-xs text-red-500">{errors.name[0]}</span>
-          )}
         </div>
+
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div className="">
+            <label htmlFor="name" className="text-sm font-medium">
+              Name
+            </label>
+            <input
+              id="name"
+              name="name"
+              type="text"
+              placeholder="Your name"
+              autoComplete="name"
+              required
+              maxLength={70}
+              onChange={handleChange}
+              aria-invalid={Boolean(errors.name?.length)}
+              aria-describedby={
+                errors.name?.length ? "contact-name-error" : undefined
+              }
+              className={`${fieldClass} h-11`}
+            />
+            {errors.name && (
+              <span id="contact-name-error" className="text-xs text-red-500">
+                {errors.name[0]}
+              </span>
+            )}
+          </div>
+          <div className="">
+            <label htmlFor="email" className="text-sm font-medium">
+              Email
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="you@example.com"
+              autoComplete="email"
+              required
+              maxLength={254}
+              onChange={handleChange}
+              aria-invalid={Boolean(errors.email?.length)}
+              aria-describedby={
+                errors.email?.length ? "contact-email-error" : undefined
+              }
+              className={`${fieldClass} h-11`}
+            />
+            {errors.email && (
+              <span id="contact-email-error" className="text-xs text-red-500">
+                {errors.email[0]}
+              </span>
+            )}
+          </div>
+        </div>
+
         <div className="">
-          <label htmlFor="email" className="text-sm font-medium">
-            Email
+          <label htmlFor="subject" className="text-sm font-medium">
+            Subject
           </label>
           <input
-            id="email"
-            name="email"
-            type="email"
-            placeholder="you@example.com"
-            autoComplete="email"
+            id="subject"
+            name="subject"
+            type="text"
+            placeholder="What is this about?"
             required
+            maxLength={70}
             onChange={handleChange}
+            aria-invalid={Boolean(errors.subject?.length)}
+            aria-describedby={
+              errors.subject?.length ? "contact-subject-error" : undefined
+            }
             className={`${fieldClass} h-11`}
           />
-          {errors.email && (
-            <span className="text-xs text-red-500">{errors.email[0]}</span>
+          {errors.subject && (
+            <span id="contact-subject-error" className="text-xs text-red-500">
+              {errors.subject[0]}
+            </span>
           )}
         </div>
-      </div>
 
-      <div className="">
-        <label htmlFor="subject" className="text-sm font-medium">
-          Subject
-        </label>
-        <input
-          id="subject"
-          name="subject"
-          type="text"
-          placeholder="What is this about?"
-          onChange={handleChange}
-          className={`${fieldClass} h-11`}
-        />
-        {errors.subject && (
-          <span className="text-xs text-red-500">{errors.subject[0]}</span>
-        )}
-      </div>
+        <div className="">
+          <label htmlFor="message" className="text-sm font-medium">
+            Message
+          </label>
+          <textarea
+            id="message"
+            name="message"
+            placeholder="Write your message here"
+            required
+            maxLength={5000}
+            onChange={handleChange}
+            aria-invalid={Boolean(errors.message?.length)}
+            aria-describedby={
+              errors.message?.length ? "contact-message-error" : undefined
+            }
+            className={`${fieldClass} min-h-40 resize-none py-3`}
+          />
+          {errors.message && (
+            <span id="contact-message-error" className="text-xs text-red-500">
+              {errors.message[0]}
+            </span>
+          )}
+        </div>
 
-      <div className="">
-        <label htmlFor="message" className="text-sm font-medium">
-          Message
-        </label>
-        <textarea
-          id="message"
-          name="message"
-          placeholder="Write your message here"
-          required
-          onChange={handleChange}
-          className={`${fieldClass} min-h-40 resize-none py-3`}
-        />
-        {errors.message && (
-          <span className="text-xs text-red-500">{errors.message[0]}</span>
-        )}
-      </div>
-
-      <Button disabled={loading} type="submit" size="lg" className="w-full">
-        {loading ? "Sending..." : "Send message"}
-      </Button>
+        <Button disabled={loading} type="submit" size="lg" className="w-full">
+          {loading ? "Sending..." : "Send message"}
+        </Button>
+      </fieldset>
     </form>
   );
 };

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { buttonVariants } from "@/components/ui/button";
+import { AccountNavigation } from "./account-navigation";
 
 import { ThemeToggle } from "./theme-toggle";
 import { Logo } from "./Logo";
@@ -40,15 +40,7 @@ const Navbar = () => {
 
         <div className="flex items-center gap-3 justify-self-end">
           <ThemeToggle />
-          <Link
-            href="/sign-in"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Login
-          </Link>
-          <Link href="/sign-up" className={buttonVariants({ size: "sm" })}>
-            Register
-          </Link>
+          <AccountNavigation />
         </div>
       </div>
     </header>

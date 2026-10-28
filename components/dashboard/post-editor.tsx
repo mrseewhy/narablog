@@ -1,232 +1,170 @@
 "use client";
-
-import { useState } from "react";
-import Link from "next/link";
+import { useState, useCallback, type FormEvent } from "react";
 import dynamic from "next/dynamic";
-import { ImagePlus } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { authorPosts, demoUsers } from "@/lib/data/demo/dashboard";
-import { fieldClass, PageHeading } from "./ui";
+import { savePostAction } from "@/lib/data/actions/post.actions";
+import { postSchema } from "@/lib/data/validation/post.validate";
+import { PageHeading, fieldClass } from "./ui";
 import type { getCategoriesDAL } from "@/lib/data/dal/category.dal";
-
+import type { getEditablePost } from "@/lib/data/dal/post.dal";
+import type { PartialBlock } from "@blocknote/core";
 const ContentEditor = dynamic(() => import("./content-editor"), {
   ssr: false,
-  loading: () => (
-    <div
-      className="min-h-96 animate-pulse rounded-lg border bg-muted"
-      aria-label="Loading content editor"
-    />
-  ),
+  loading: () => <div className="min-h-96 rounded bg-muted animate-pulse" />,
 });
-
-function Editor({
+export function PostEditor({
+  categories,
   post,
   admin = false,
-  categories,
+  authors = [],
 }: {
-  post?: (typeof authorPosts)[number];
-  admin?: boolean;
   categories: Awaited<ReturnType<typeof getCategoriesDAL>>;
+  post?: Awaited<ReturnType<typeof getEditablePost>>;
+  admin?: boolean;
+  authors?: { id: string; name: string }[];
 }) {
-  const [imageName, setImageName] = useState("");
+  const router = useRouter();
+  const [ready, setReady] = useState(false);
+  const editorReady = useCallback(() => setReady(true), []);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  async function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (busy || !ready) return;
+    const values = Object.fromEntries(new FormData(e.currentTarget).entries());
+    setMessage("");
+    try {
+      const input = postSchema.safeParse({
+        ...values,
+        id: post?.id,
+        content: JSON.parse(String(values.content)),
+      });
+      if (!input.success) {
+        setMessage(input.error.issues[0]?.message ?? "Please check your post.");
+        return;
+      }
+      setBusy(true);
+      const result = await savePostAction(input.data);
+      setMessage(result.message);
+      if (result.success) {
+        router.push(admin ? "/admin/posts" : "/dashboard/posts");
+        router.refresh();
+      }
+    } catch {
+      setMessage("Unable to save your post.");
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
-    <form
-      onSubmit={(event) => event.preventDefault()}
-      className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]"
-    >
-      <section
-        className="space-y-6 rounded-xl border bg-card p-6 shadow-sm"
-        aria-label="Post content"
+    <div className="space-y-8">
+      <PageHeading
+        title={post ? "Edit post" : "Create post"}
+        description="Write and publish your story."
+      />
+      <form
+        onSubmit={submit}
+        aria-busy={busy}
+        className="rounded-xl border bg-card p-6"
       >
-        <div className="space-y-2">
-          <label htmlFor="post-title" className="text-sm font-medium">
-            Title
-          </label>
-          <input
-            id="post-title"
-            name="title"
-            required
-            defaultValue={post?.title}
-            placeholder="Give your story a title"
-            className={fieldClass}
-          />
-        </div>
-        <div className="space-y-2">
-          <span id="post-content-label" className="text-sm font-medium">
-            Content
-          </span>
-          <ContentEditor initialText={post?.body} />
-        </div>
-      </section>
-      <aside className="space-y-6">
-        <section
-          className="space-y-5 rounded-xl border bg-card p-6 shadow-sm"
-          aria-labelledby="publish-heading"
-        >
-          <h2 id="publish-heading" className="font-semibold">
-            Publishing
-          </h2>
-          {admin && (
-            <div className="space-y-2">
-              <label htmlFor="post-author" className="text-sm font-medium">
-                Author
-              </label>
-              <select
-                id="post-author"
-                name="author"
-                required
-                defaultValue=""
-                className={fieldClass}
-              >
-                <option value="" disabled>
-                  Select an author
-                </option>
-                {demoUsers
-                  .filter((user) => user.status === "Active")
-                  .map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.name}
-                    </option>
-                  ))}
-              </select>
-            </div>
-          )}
-          <div className="space-y-2">
-            <label htmlFor="post-category" className="text-sm font-medium">
-              Category
-            </label>
-            <select
-              id="post-category"
-              name="category"
+        <fieldset disabled={busy} className="space-y-6">
+          <div>
+            <label htmlFor="title">Title</label>
+            <input
+              id="title"
+              name="title"
+              defaultValue={post?.title}
+              minLength={3}
+              maxLength={200}
               required
-              defaultValue={post?.category ?? ""}
+              className={fieldClass}
+            />
+          </div>
+          <div>
+            <span id="post-content-label">Content</span>
+            <ContentEditor
+              initialDocument={post?.content as PartialBlock[] | undefined}
+              disabled={busy}
+              onReady={editorReady}
+            />
+          </div>
+          <div>
+            <label htmlFor="categoryId">Category</label>
+            <select
+              id="categoryId"
+              name="categoryId"
+              defaultValue={post?.categoryId ?? ""}
+              required
               className={fieldClass}
             >
               <option value="" disabled>
                 Select a category
               </option>
-              {categories.map((category) => (
-                <option key={category.publicId}>{category.name}</option>
+              {categories.map((c) => (
+                <option key={c.publicId} value={c.publicId}>
+                  {c.name}
+                </option>
               ))}
             </select>
           </div>
-          <div className="space-y-2">
-            <label htmlFor="post-status" className="text-sm font-medium">
-              Status
-            </label>
+          {admin && (
+            <div>
+              <label htmlFor="authorId">Author</label>
+              <select
+                id="authorId"
+                name="authorId"
+                defaultValue={post?.authorId || ""}
+                className={fieldClass}
+              >
+                <option value="">
+                  {post ? "Keep current author" : "My account"}
+                </option>
+                {authors.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div>
+            <label htmlFor="status">Status</label>
             <select
-              id="post-status"
+              id="status"
               name="status"
-              defaultValue={post?.status ?? "Draft"}
+              defaultValue={post?.status || "Draft"}
               className={fieldClass}
             >
               <option>Draft</option>
               <option>Published</option>
             </select>
           </div>
-          <Button type="submit" className="w-full">
-            {post ? "Save changes" : admin ? "Create post" : "Save post"}
-          </Button>
-          <Link
-            href={admin ? "/admin/posts" : "/dashboard/posts"}
-            className={buttonVariants({
-              variant: "outline",
-              className: "w-full",
-            })}
-          >
-            Cancel
-          </Link>
-        </section>
-        <section
-          className="space-y-4 rounded-xl border bg-card p-6 shadow-sm"
-          aria-labelledby="cover-heading"
-        >
-          <h2 id="cover-heading" className="font-semibold">
-            Cover image
-          </h2>
-          <label
-            htmlFor="post-cover"
-            className="flex cursor-pointer flex-col items-center gap-3 rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground hover:border-primary"
-          >
-            <ImagePlus className="size-8" aria-hidden="true" />
-            <span>{imageName || "Choose a cover image"}</span>
-            <span className="text-xs">PNG, JPEG, or WebP</span>
-          </label>
-          <input
-            id="post-cover"
-            name="cover"
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-md file:border file:bg-background file:p-2 file:text-foreground"
-            onChange={(event) =>
-              setImageName(event.target.files?.[0]?.name ?? "")
-            }
-          />
-        </section>
-      </aside>
-    </form>
-  );
-}
-
-export function PostEditor({
-  edit = false,
-  admin = false,
-  initialPostId = authorPosts[0].id,
-  categories,
-}: {
-  edit?: boolean;
-  admin?: boolean;
-  initialPostId?: number;
-  categories: Awaited<ReturnType<typeof getCategoriesDAL>>;
-}) {
-  const [selected, setSelected] = useState(
-    authorPosts.some((post) => post.id === initialPostId)
-      ? initialPostId
-      : authorPosts[0].id,
-  );
-  const post = edit
-    ? authorPosts.find((item) => item.id === selected)
-    : undefined;
-  return (
-    <div className="space-y-8">
-      <PageHeading
-        title={edit ? "Edit Posts" : admin ? "Create post" : "Create Posts"}
-        description={
-          edit
-            ? "Refine your stories and keep your content up to date."
-            : admin
-              ? "Create a story and choose its author, category, and publishing status."
-              : "Turn your ideas into your next story."
-        }
-      />
-      {edit && (
-        <section className="rounded-xl border bg-card p-6 shadow-sm">
-          <label
-            htmlFor="selected-post"
-            className="mb-2 block text-sm font-medium"
-          >
-            Select a post
-          </label>
-          <select
-            id="selected-post"
-            value={selected}
-            onChange={(event) => setSelected(Number(event.target.value))}
-            className={`${fieldClass} sm:max-w-xl`}
-          >
-            {authorPosts.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.title}
-              </option>
-            ))}
-          </select>
-        </section>
-      )}
-      <Editor
-        key={post?.id ?? "new"}
-        post={post}
-        admin={admin}
-        categories={categories}
-      />
+          {!categories.length && (
+            <p>
+              {admin
+                ? "Create a category before saving a post."
+                : "An administrator needs to create a category before you can save a post."}
+            </p>
+          )}
+          {message && <p role="status">{message}</p>}
+          <div className="flex gap-3">
+            <Button
+              type="submit"
+              disabled={busy || !ready || !categories.length}
+            >
+              {busy ? "Saving..." : "Save post"}
+            </Button>
+            <Link
+              href={admin ? "/admin/posts" : "/dashboard/posts"}
+              className={buttonVariants({ variant: "outline" })}
+            >
+              Cancel
+            </Link>
+          </div>
+        </fieldset>
+      </form>
     </div>
   );
 }

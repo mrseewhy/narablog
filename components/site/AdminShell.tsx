@@ -20,9 +20,12 @@ import {
 } from "lucide-react";
 import { ThemeToggle } from "@/components/site/theme-toggle";
 import { Logo } from "@/components/site/Logo";
+import { ROLES, type Role } from "@/lib/roles";
+import { signOutAction } from "@/lib/data/actions/auth.actions";
+import { toast } from "sonner";
 
 interface SidebarProps {
-  role: "admin" | "user";
+  role: Role;
   userName?: string;
   userEmail?: string;
   children: React.ReactNode;
@@ -31,8 +34,27 @@ interface SidebarProps {
 export function AdminShell({ role, userName = "User", userEmail = "user@example.com", children }: SidebarProps) {
   const pathname = usePathname();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
-  const navItems = role === "admin"
+  async function handleSignOut() {
+    if (isSigningOut) return;
+    setIsSigningOut(true);
+    try {
+      const result = await signOutAction();
+      if (!result.success) {
+        toast.error(result.message);
+        setIsSigningOut(false);
+        return;
+      }
+      // Discard cached protected screens and client session state.
+      window.location.replace("/sign-in");
+    } catch {
+      toast.error("Unable to sign out. Please try again.");
+      setIsSigningOut(false);
+    }
+  }
+
+  const navItems = role === ROLES.ADMIN
     ? [
         { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
         { label: "Contacts", href: "/admin/contacts", icon: Mail },
@@ -49,7 +71,7 @@ export function AdminShell({ role, userName = "User", userEmail = "user@example.
         { label: "Activity", href: "/dashboard/activity", icon: Activity },
       ];
 
-  const userType = role === "admin" ? "Administrator" : "Author";
+  const userType = role === ROLES.ADMIN ? "Administrator" : "Author";
   const formTitles: Record<string, string> = {
     "/admin/users/create": "Create user",
     "/admin/categories/create": "Create category",
@@ -114,19 +136,21 @@ export function AdminShell({ role, userName = "User", userEmail = "user@example.
               Visit Website
             </Link>
             <Link
-              href={role === "admin" ? "/admin/settings" : "/dashboard/profile"}
+              href={role === ROLES.ADMIN ? "/admin/settings" : "/dashboard/profile"}
               className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
             >
               <User className="size-4" />
               Profile Settings
             </Link>
-            <Link
-              href="/sign-out"
-              className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+            <button
+              type="button"
+              onClick={handleSignOut}
+              disabled={isSigningOut}
+              className="flex w-full items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
             >
               <LogOut className="size-4" />
-              Logout
-            </Link>
+              {isSigningOut ? "Signing out..." : "Logout"}
+            </button>
           </div>
         </div>
       </aside>
@@ -171,21 +195,22 @@ export function AdminShell({ role, userName = "User", userEmail = "user@example.
                     </Link>
                     <Link
                       onClick={() => setIsProfileOpen(false)}
-                      href={role === "admin" ? "/admin/settings" : "/dashboard/profile"}
+                      href={role === ROLES.ADMIN ? "/admin/settings" : "/dashboard/profile"}
                       className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                     >
                       <User className="size-4" />
                       Profile Settings
                     </Link>
                     <div className="h-px bg-border my-1" />
-                    <Link
-                      onClick={() => setIsProfileOpen(false)}
-                      href="/sign-out"
-                      className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+                    <button
+                      type="button"
+                      onClick={handleSignOut}
+                      disabled={isSigningOut}
+                      className="flex w-full items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
                     >
                       <LogOut className="size-4" />
-                      Logout
-                    </Link>
+                      {isSigningOut ? "Signing out..." : "Logout"}
+                    </button>
                   </div>
                   </Popover.Popup>
                 </Popover.Positioner>

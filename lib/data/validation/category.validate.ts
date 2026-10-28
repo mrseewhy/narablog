@@ -25,3 +25,5 @@ export type CreateCategoryInput = z.infer<typeof categorySchema>;
 export type CategoryErrors = z.inferFlattenedErrors<
   typeof categorySchema
 >["fieldErrors"];
+
+export const categoryIdSchema = z.uuid("Invalid category.");

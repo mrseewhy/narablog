@@ -1,15 +1,20 @@
 import { Suspense } from "react";
-import { PostEditor } from "@/components/dashboard/post-editor";
-import { getCategoriesDAL } from "@/lib/data/dal/category.dal";
-
-type Props = { searchParams: Promise<{ post?: string | string[] }> };
-
-async function EditPost({ searchParams }: Props) {
+import { PostEditorPage } from "@/components/dashboard/post-editor-page";
+import { DashboardPageSkeleton } from "@/components/dashboard/page-skeleton";
+async function Content({
+  searchParams,
+}: {
+  searchParams: Promise<{ post?: string }>;
+}) {
   const { post } = await searchParams;
-  const categories = await getCategoriesDAL();
-  return <PostEditor key={String(post)} edit categories={categories} initialPostId={typeof post === "string" ? Number(post) : undefined} />;
+  return <PostEditorPage admin={false} id={post} />;
 }
-
-export default function Page({ searchParams }: Props) {
-  return <Suspense fallback={<p className="text-muted-foreground">Loading post editor...</p>}><EditPost searchParams={searchParams} /></Suspense>;
+export default function Page(props: {
+  searchParams: Promise<{ post?: string }>;
+}) {
+  return (
+    <Suspense fallback={<DashboardPageSkeleton />}>
+      <Content {...props} />
+    </Suspense>
+  );
 }
