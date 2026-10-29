@@ -25,7 +25,6 @@ async function DashboardContent() {
         id: user.id,
         name: user.name,
         email: user.email,
-        verified: user.emailVerified,
       })
       .from(user)
       .orderBy(desc(user.createdAt))
@@ -52,8 +51,7 @@ async function DashboardContent() {
             <li key={row.id} className="py-4">
               <p className="font-medium">{row.name}</p>
               <p className="text-sm text-muted-foreground">
-                {row.email} ·{" "}
-                {row.verified ? "Verified" : "Awaiting verification"}
+                {row.email}
               </p>
             </li>
           ))}

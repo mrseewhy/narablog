@@ -1,12 +1,18 @@
 import Hero from "@/components/site/Hero";
-import PostList from "@/components/site/post-list";
+import { HomeFeed } from "@/components/site/home-feed";
 import { Suspense } from "react";
 import Loading from "../loading";
 
-import { getPublicPosts } from "@/lib/data/dal/post.dal";
+import { getHomePostsPage } from "@/lib/data/dal/post.dal";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 async function Feed() {
-  return <PostList items={await getPublicPosts()} />;
+  const initialPage = await getHomePostsPage();
+  return <HomeFeed key={initialPage.items[0]?.id ?? "empty"} initialPage={initialPage} />;
 }
 
 const page = () => {

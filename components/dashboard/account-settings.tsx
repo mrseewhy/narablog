@@ -13,9 +13,11 @@ import type { ProfileInput } from "@/lib/data/validation/account.validate";
 export function AccountSettings({
   profile,
   email,
+  emailVerified,
 }: {
   profile: ProfileInput;
   email: string;
+  emailVerified: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -116,8 +118,9 @@ export function AccountSettings({
       >
         <h2 className="text-lg font-semibold">Change email</h2>
         <p className="text-sm text-muted-foreground">
-          Current address: {email}. Approval and verification are required
-          before it changes.
+          Current address: {email}. {emailVerified
+            ? "Approve the change at your current address, then verify the new one."
+            : "Verify the new address to complete the change."}
         </p>
         <label htmlFor="new-email">New email address</label>
         <input

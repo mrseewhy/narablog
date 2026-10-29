@@ -17,8 +17,10 @@ const literata = Literata({
 });
 
 export const metadata: Metadata = {
-  title: "Naroblog",
-  description: "The number 1 medium alternative",
+  metadataBase: new URL(process.env.BETTER_AUTH_URL ?? "http://localhost:3000"),
+  title: { default: "NaroBlog", template: "%s | NaroBlog" },
+  description: "Stories and ideas from the NaroBlog community.",
+  openGraph: { siteName: "NaroBlog", type: "website" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

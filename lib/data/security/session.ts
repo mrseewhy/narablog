@@ -29,8 +29,6 @@ export async function requireSession() {
 
   if (!session) redirect("/sign-in");
 
-  if (!session.user.emailVerified) redirect("/verify-email");
-
   const { banned, banExpires } = session.user;
   if (banned && (!banExpires || new Date(banExpires).getTime() > Date.now())) {
     redirect("/unauthorized");

@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "auth:bootstrap": "node --experimental-strip-types scripts/bootstrap-admin.mjs",
+    "db:seed-demo": "node scripts/seed-demo.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "test:auth": "node tests/auth.e2e.mjs",

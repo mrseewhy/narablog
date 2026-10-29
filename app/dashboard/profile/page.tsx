@@ -15,7 +15,7 @@ async function Settings() {
   };
   return (
     <div className="space-y-12">
-      <AccountSettings profile={profile} email={user.email} />
+      <AccountSettings profile={profile} email={user.email} emailVerified={user.emailVerified} />
       <SessionsPage admin={false} />
     </div>
   );

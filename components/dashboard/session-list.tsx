@@ -21,15 +21,18 @@ export function SessionList({
   sessions,
   currentId,
   admin,
+  hasOtherSessions,
 }: {
   sessions: SessionRow[];
   currentId: string;
   admin: boolean;
+  hasOtherSessions: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   async function revoke(id?: string) {
+    if (busy) return;
     setBusy(true);
     try {
       const result = id
@@ -51,10 +54,10 @@ export function SessionList({
     <section className="space-y-5">
       <PageHeading
         title={admin ? "Account sessions" : "Your sessions"}
-        description="Revoke a session to end its access."
+        description={admin ? "Review active sessions across accounts. Revoking your current session signs you out." : "Review your active devices and sign out sessions you no longer use."}
       >
-        <Button disabled={busy} onClick={() => revoke()}>
-          Sign out other devices
+        <Button disabled={busy || !hasOtherSessions} onClick={() => revoke()}>
+          {admin ? "Sign out my other devices" : "Sign out other devices"}
         </Button>
       </PageHeading>
       {message && <p role="status">{message}</p>}
@@ -77,13 +80,16 @@ export function SessionList({
                 IP: {row.ipAddress || "Unknown"} · Last updated:{" "}
                 {row.updatedAt.replace("T", " ").slice(0, 19)} UTC
               </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Expires: {row.expiresAt.replace("T", " ").slice(0, 19)} UTC
+              </p>
             </div>
             <Button
               variant="outline"
               disabled={busy}
               onClick={() => revoke(row.id)}
             >
-              Revoke session
+              {row.id === currentId ? "Sign out this device" : "Revoke session"}
             </Button>
           </article>
         ))}

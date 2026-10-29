@@ -29,17 +29,18 @@ hosts. To add Resend later, implement delivery in this adapter and replace its
 availability check with validated provider configuration. Do not remove the
 availability check without providing real delivery.
 
-## Registration, verification, and recovery
+## Registration and recovery
 
 Registration requires name, email, and an 8–70 character password containing
 uppercase, lowercase, a number, and a supported special character. Passwords
 are never trimmed. Shared server hooks enforce the policy for actions and
 for direct Better Auth endpoint requests.
 
-New accounts are regular users. Registration does not establish a session;
-users must open the verification link and then sign in. Existing unverified
-sessions cannot access private areas. Verification links expire after one
-hour. The verification page can request a replacement link.
+New accounts are regular users. Registration creates a session immediately and
+does not send a verification email. The `email_verified` field remains false
+until a future email flow verifies the address; it is not an access gate.
+Anyone can register an address they control or claim an unregistered address,
+so account ownership is not confirmed in this temporary mode.
 
 Password reset requests use the same response whether an account exists or
 not. Reset links expire after 30 minutes, are single-use, and successful reset
@@ -47,8 +48,10 @@ revokes existing sessions. Invalid and expired links have a path to request a
 replacement. Password changes require the current password and offer revocation
 of other devices, enabled by default.
 
-Email changes require approval at the current address and verification at the
-new address before completion. A fresh session may be required by Better Auth.
+For a verified account, email changes require approval at the current address
+and verification at the new address. An account created in flat registration
+mode verifies only the new address. A fresh session may be required by Better
+Auth.
 Profile mutations accept only the explicitly validated profile fields, never
 role, email verification, or ban flags. The same profile limits and role
 validation also run in the shared user-create and user-update database hooks,
@@ -64,34 +67,33 @@ again at their data boundary. A cookie's presence alone never grants access.
 
 The only roles are the constants in `lib/roles.ts`. Administrators use `/admin`
 and regular users use `/dashboard`. Unauthenticated requests redirect to
-`/sign-in`, unverified sessions to `/verify-email`, and suspended accounts to
-`/unauthorized`. Session lookup failures reject access instead of rendering
+`/sign-in` and suspended accounts to `/unauthorized`. Session lookup failures reject access instead of rendering
 protected content. Client-controlled role values are never trusted.
 
 Post lists, editing, saving, and deletion use real database records. Authors
 can access only their own posts, including when manually changing an ID or
 calling an action directly. Administrators may manage all posts and assign
-active verified authors. Public queries return only published posts. Drafts
+active authors. Public queries return only published posts. Drafts
 are not exposed by the blog route. Block content is rendered as React text;
 raw authored HTML is not injected. Image uploads and rich public formatting
 are separate publishing enhancements.
 
 ## Initial admin and user management
 
-Register and verify the intended account locally, then run:
+Register the intended account locally, then run:
 
 ```sh
 npm run auth:bootstrap -- --email owner@example.com
 ```
 
 This local-only script uses a transaction and advisory lock, refuses to run if
-an administrator already exists, requires an active verified account, assigns
+an administrator already exists, requires an active account, assigns
 `ROLES.ADMIN`, and revokes that account's existing sessions. Sign in again.
 There is no public bootstrap endpoint and no default admin password.
 
 The admin user screen lists persisted users with pagination. Admins can create
 users, assign one of the two roles, suspend/restore accounts, and revoke
-sessions. New admin-created users must also verify their email. An admin cannot
+sessions. New admin-created users can sign in immediately. An admin cannot
 remove their own administrator access through the supported admin endpoints.
 Role changes through the UI revoke the affected user's sessions.
 
@@ -107,12 +109,14 @@ current session returns the browser to sign-in.
 - Set a separately generated `BETTER_AUTH_SECRET` of at least 32 characters.
   Auth rejects requests in production if the secret or HTTPS URL is missing.
 - Better Auth uses secure cookies in production; do not override that behavior.
-- Enable real email delivery before enabling registration/recovery publicly.
+- Registration works without email delivery, but does not establish ownership
+  of the supplied address. Email-based recovery and address changes remain
+  unavailable on deployed hosts until a provider is configured.
 - Vercel supplies `VERCEL=1`. Both auth and the custom rate limiter trust only
   `x-vercel-forwarded-for` there. Non-Vercel production requires a separately
   reviewed trusted proxy integration; it does not trust arbitrary headers.
 - Local development deliberately shares one localhost rate-limit bucket.
-- Configure a separate `CRON_SECRET` for rate-limit cleanup.
+- Configure a separate `CRON_SECRET` for rate-limit and expired-session cleanup.
 - Apply migrations before deploying, retain database backups, and use a
   database region close to the app's server region.
 

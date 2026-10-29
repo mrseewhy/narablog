@@ -43,12 +43,6 @@ export const signInAction = async (
           message: "Too many sign-in attempts. Please try again later.",
         };
       }
-      if (error.body?.code === "EMAIL_NOT_VERIFIED") {
-        return {
-          success: false,
-          message: "Please verify your email before signing in.",
-        };
-      }
       if (error.body?.code === "BANNED_USER") {
         return {
           success: false,
@@ -97,12 +91,12 @@ export const signUpAction = async (data: signUpFormSchemaType) => {
         name: result.data.name,
         email: result.data.email,
         password: result.data.password,
-        callbackURL: "/sign-in?verified=1",
+        callbackURL: "/redirect",
       },
     });
     return {
       success: true,
-      message: "User Created",
+      message: "Account created.",
     };
   } catch (error) {
     if (isAPIError(error)) {

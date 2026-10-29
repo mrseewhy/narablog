@@ -4,7 +4,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { PageHeading } from "./ui";
 import { DashboardPageSkeleton } from "./page-skeleton";
 import { notFound } from "next/navigation";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/data";
 import { user } from "@/lib/data/auth-schema";
@@ -65,7 +65,7 @@ async function PostEditorPageContent({
     ? await db
         .select({ id: user.id, name: user.name })
         .from(user)
-        .where(and(eq(user.emailVerified, true), eq(user.banned, false)))
+        .where(eq(user.banned, false))
     : [];
   return (
     <PostEditor

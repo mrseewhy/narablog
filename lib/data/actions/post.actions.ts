@@ -40,12 +40,11 @@ export async function savePostAction(data: unknown) {
       .select({
         id: user.id,
         banned: user.banned,
-        verified: user.emailVerified,
       })
       .from(user)
       .where(eq(user.id, authorId));
-    if (!author || author.banned || !author.verified)
-      return { success: false, message: "Select an active, verified author." };
+    if (!author || author.banned)
+      return { success: false, message: "Select an active author." };
     const values = {
       title: input.title,
       categoryId: input.categoryId,

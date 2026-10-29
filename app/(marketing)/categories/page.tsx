@@ -1,6 +1,13 @@
 import CategoryCard from "./_component/CategoryCard";
 import { CategoriesEmptyState } from "@/components/site/categories-empty-state";
 import { getCategoryDirectoryDAL } from "@/lib/data/dal/category.dal";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Categories",
+  description: "Browse topics and published stories on NaroBlog.",
+  alternates: { canonical: "/categories" },
+};
 
 const CategoriesPage = async () => {
   const categories = await getCategoryDirectoryDAL();

@@ -19,12 +19,12 @@ const Footer = async () => {
   return (
     <footer className="mt-20 w-full border-t">
       <div className="border-t">
-        <div className="mx-auto w-full max-w-7xl px-4 py-6 flex justify-between">
+        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-6">
           <p className="text-sm text-muted-foreground">
             &copy; {renderYear} NaroBlog. All rights reserved.
           </p>
           <nav aria-label="Footer">
-            <ul className="flex items-center gap-8">
+            <ul className="flex flex-wrap items-center gap-x-6 gap-y-2">
               {footerLinks.map((link) => (
                 <li key={link.href}>
                   <Link

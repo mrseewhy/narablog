@@ -11,8 +11,8 @@ const Hero = () => {
           <span className="text-[#F5B544]">worth your time.</span>
         </h1>
         <p className="mt-6 max-w-2xl text-base text-[#9AA5BA] md:text-lg">
-          Read and write across politics, sports, technology, religion, and
-          science.
+          Discover published stories from the community, or share a story of
+          your own.
         </p>
         <div className="mt-8">
           <Link

@@ -4,7 +4,7 @@ import { getCurrentSession } from "@/lib/data/security/session";
 
 async function GuestOnly({ children }: { children: ReactNode }) {
   const session = await getCurrentSession();
-  if (session?.user.emailVerified) redirect("/redirect");
+  if (session) redirect("/redirect");
   return children;
 }
 export function AuthEntry({ children }: { children: ReactNode }) {

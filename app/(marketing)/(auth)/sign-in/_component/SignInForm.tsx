@@ -61,12 +61,6 @@ export default function SignInForm() {
           Email verified. You can now sign in.
         </p>
       )}
-      {params.get("error") && (
-        <p role="alert" className="text-sm text-destructive">
-          This verification link is invalid or expired. Request a new
-          verification link below.
-        </p>
-      )}
       <div>
         <AuthField
           id="email"
@@ -111,11 +105,6 @@ export default function SignInForm() {
           </p>
         )}
       </div>
-      <p className="text-sm">
-        <Link href="/verify-email" className="text-primary underline">
-          Verify email or request a new verification link
-        </Link>
-      </p>
       <div className="text-right">
         <Link
           href="/forgot-password"

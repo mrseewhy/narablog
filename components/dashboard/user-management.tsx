@@ -1,11 +1,10 @@
 "use client";
+
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { manageUserAction } from "@/lib/data/actions/account.actions";
 import { ROLES } from "@/lib/roles";
-import { PageHeading } from "./ui";
 
 type UserRow = {
   id: string;
@@ -13,7 +12,6 @@ type UserRow = {
   email: string;
   role: string | null;
   banned: boolean | null;
-  emailVerified: boolean;
 };
 export function UserManagement({
   users,
@@ -24,84 +22,103 @@ export function UserManagement({
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
+  const [feedback, setFeedback] = useState({ message: "", success: true });
   async function manage(
-    id: string,
+    account: UserRow,
     operation: "role" | "ban" | "unban" | "revoke",
     value?: string,
   ) {
-    if (
-      (operation === "ban" || operation === "role") &&
-      !window.confirm("Apply this account change?")
-    )
-      return;
+    if (busy) return;
+    const prompt =
+      operation === "role"
+        ? `Change ${account.name}'s role to ${value === ROLES.ADMIN ? "admin" : "user"}? This changes their access immediately.`
+        : operation === "ban"
+          ? `Suspend ${account.name}? They will lose access immediately.`
+          : operation === "revoke"
+            ? `Revoke all sessions for ${account.name}? They will need to sign in again.`
+            : null;
+    if (prompt && !window.confirm(prompt)) return;
     setBusy(true);
+    setFeedback({ message: "", success: true });
     try {
-      const result = await manageUserAction(id, operation, value);
-      setMessage(result.message);
+      const result = await manageUserAction(account.id, operation, value);
+      setFeedback({ message: result.message, success: result.success });
       if (result.success) router.refresh();
     } catch {
-      setMessage("Unable to update this user.");
+      setFeedback({ message: "Unable to update this user.", success: false });
     } finally {
       setBusy(false);
     }
   }
   return (
-    <section className="space-y-6">
-      <PageHeading
-        title="Users"
-        description="Manage registered accounts and their access."
-      >
-        <Link href="/admin/users/create" className={buttonVariants()}>
-          Create user
-        </Link>
-      </PageHeading>
-      {message && <p role="status">{message}</p>}
-      {users.length === 0 && <p>No users found.</p>}
-      {users.map((user) => (
-        <article
-          key={user.id}
-          className="flex flex-wrap items-center justify-between gap-4 rounded-xl border bg-card p-5"
+    <section className="space-y-4" aria-label="User accounts">
+      {feedback.message && (
+        <p
+          role={feedback.success ? "status" : "alert"}
+          className={feedback.success ? "text-sm" : "text-sm text-destructive"}
         >
-          <div>
-            <h2 className="font-semibold">
-              {user.name}
-              {user.id === currentId ? " (you)" : ""}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {user.email} ·{" "}
-              {user.emailVerified ? "Verified" : "Awaiting verification"} ·{" "}
-              {user.banned ? "Suspended" : "Active"}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <select
-              aria-label={`Role for ${user.name}`}
-              value={user.role || ROLES.USER}
-              disabled={busy || user.id === currentId}
-              onChange={(e) => manage(user.id, "role", e.target.value)}
-              className="rounded border bg-background p-2"
-            >
-              <option value={ROLES.USER}>User</option>
-              <option value={ROLES.ADMIN}>Admin</option>
-            </select>
-            <Button
-              variant="outline"
-              disabled={busy || user.id === currentId}
-              onClick={() => manage(user.id, user.banned ? "unban" : "ban")}
-            >
-              {user.banned ? "Restore access" : "Suspend"}
-            </Button>
-            <Button
-              variant="outline"
-              disabled={busy}
-              onClick={() => manage(user.id, "revoke")}
-            >
-              Revoke sessions
-            </Button>
-          </div>
-        </article>
-      ))}
+          {feedback.message}
+        </p>
+      )}
+      {users.length === 0 && (
+        <p className="rounded-xl border bg-card p-8 text-center text-muted-foreground">
+          No accounts match these filters.
+        </p>
+      )}
+      {users.map((account) => {
+        const self = account.id === currentId;
+        const admin =
+          account.role
+            ?.split(",")
+            .some((role) => role.trim() === ROLES.ADMIN) ?? false;
+        return (
+          <article
+            key={account.id}
+            className="flex flex-wrap items-center justify-between gap-4 rounded-xl border bg-card p-5"
+          >
+            <div>
+              <h2 className="font-semibold">
+                {account.name}
+                {self ? " (you)" : ""}
+              </h2>
+              <p className="break-all text-sm text-muted-foreground">
+                {account.email}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {admin ? "Admin" : "User"} ·{" "}
+                {account.banned ? "Suspended" : "Active"}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                disabled={busy || self}
+                onClick={() =>
+                  manage(account, "role", admin ? ROLES.USER : ROLES.ADMIN)
+                }
+              >
+                {admin ? "Make user" : "Make admin"}
+              </Button>
+              <Button
+                variant="outline"
+                disabled={busy || self}
+                onClick={() =>
+                  manage(account, account.banned ? "unban" : "ban")
+                }
+              >
+                {account.banned ? "Restore access" : "Suspend"}
+              </Button>
+              <Button
+                variant="outline"
+                disabled={busy || self}
+                onClick={() => manage(account, "revoke")}
+              >
+                Revoke sessions
+              </Button>
+            </div>
+          </article>
+        );
+      })}
     </section>
   );
 }

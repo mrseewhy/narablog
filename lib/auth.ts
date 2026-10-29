@@ -60,7 +60,7 @@ export const auth = betterAuth({
     },
   },
   emailVerification: {
-    sendOnSignUp: true,
+    sendOnSignUp: false,
     sendOnSignIn: false,
     autoSignInAfterVerification: false,
     expiresIn: 3600,
@@ -77,7 +77,7 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: true,
+    requireEmailVerification: false,
     minPasswordLength: 8,
     maxPasswordLength: 70,
     resetPasswordTokenExpiresIn: 1800,
@@ -106,8 +106,6 @@ export const auth = betterAuth({
     before: createAuthMiddleware(async (ctx) => {
       environment.validate();
       const emailPaths = [
-        "/admin/create-user",
-        "/sign-up/email",
         "/request-password-reset",
         "/send-verification-email",
         "/change-email",
@@ -125,10 +123,6 @@ export const auth = betterAuth({
         if (!current)
           throw new APIError("UNAUTHORIZED", {
             message: "Sign in to continue.",
-          });
-        if (!current.user.emailVerified)
-          throw new APIError("FORBIDDEN", {
-            message: "Verify your email to continue.",
           });
         if (
           current.user.banned &&

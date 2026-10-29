@@ -6,8 +6,8 @@ import { isAPIError } from "better-auth/api";
 import { auth } from "@/lib/auth";
 import { requireSession, requireAdminSession } from "../security/session";
 import { db } from "../index";
-import { session as sessions, user as users } from "../auth-schema";
-import { and, eq, gt } from "drizzle-orm";
+import { session as sessions } from "../auth-schema";
+import { and, eq, gt, sql } from "drizzle-orm";
 import {
   emailSchema,
   profileSchema,
@@ -16,7 +16,6 @@ import {
   createUserSchema,
   roleSchema,
 } from "../validation/account.validate";
-import { assertEmailDeliveryAvailable } from "@/lib/email/auth-email";
 
 function failure(error: unknown) {
   if (isAPIError(error)) {
@@ -49,7 +48,6 @@ function failure(error: unknown) {
     message: "Unable to complete this request. Please try again.",
   };
 }
-
 export async function requestResetAction(data: unknown) {
   const parsed = emailSchema.safeParse(data);
   if (!parsed.success)
@@ -126,7 +124,7 @@ export async function updateProfileAction(data: unknown) {
 }
 
 export async function changeEmailAction(data: unknown) {
-  await requireSession();
+  const current = await requireSession();
   const parsed = emailSchema.safeParse(data);
   if (!parsed.success)
     return { success: false, message: "Enter a valid email address." };
@@ -137,8 +135,9 @@ export async function changeEmailAction(data: unknown) {
     });
     return {
       success: true,
-      message:
-        "Check your current email to approve this change, then verify the new address.",
+      message: current.user.emailVerified
+        ? "Check your current email to approve this change, then verify the new address."
+        : "Check the new address for a verification link.",
     };
   } catch (error) {
     return failure(error);
@@ -170,12 +169,15 @@ export async function changePasswordAction(data: unknown) {
 // Only IDs are exposed to the client. Session bearer tokens stay on the server.
 export async function revokeSessionAction(id: string, admin = false) {
   const current = admin ? await requireAdminSession() : await requireSession();
+  if (typeof id !== "string" || !id || id.length > 128 || typeof admin !== "boolean")
+    return { success: false, message: "Invalid session.", current: false };
   const [record] = await db
-    .select()
+    .select({ id: sessions.id, token: sessions.token })
     .from(sessions)
     .where(
       and(
         eq(sessions.id, id),
+        gt(sessions.expiresAt, sql`timezone('UTC', statement_timestamp())`),
         ...(admin ? [] : [eq(sessions.userId, current.user.id)]),
       ),
     );
@@ -191,7 +193,8 @@ export async function revokeSessionAction(id: string, admin = false) {
         headers: await headers(),
         body: { token: record.token },
       });
-    revalidatePath("/", "layout");
+    revalidatePath("/admin/session");
+    revalidatePath("/dashboard/profile");
     return {
       success: true,
       message: "Session revoked.",
@@ -206,7 +209,8 @@ export async function revokeOtherSessionsAction() {
   await requireSession();
   try {
     await auth.api.revokeOtherSessions({ headers: await headers() });
-    revalidatePath("/", "layout");
+    revalidatePath("/admin/session");
+    revalidatePath("/dashboard/profile");
     return { success: true, message: "Other sessions revoked." };
   } catch (error) {
     return failure(error);
@@ -222,16 +226,9 @@ export async function createUserAction(data: unknown) {
       message: parsed.error.issues[0]?.message ?? "Invalid user details.",
     };
   try {
-    assertEmailDeliveryAvailable();
     await auth.api.createUser({ headers: await headers(), body: parsed.data });
-    // The admin is already authorized above. Sending for the newly-created
-    // account must not use the admin's session (Better Auth enforces an
-    // email match when this endpoint receives an authenticated session).
-    await auth.api.sendVerificationEmail({
-      body: { email: parsed.data.email, callbackURL: "/sign-in?verified=1" },
-    });
     revalidatePath("/admin/users");
-    return { success: true, message: "User created. Verification link sent." };
+    return { success: true, message: "User created. They can sign in now." };
   } catch (error) {
     return failure(error);
   }
@@ -243,10 +240,12 @@ export async function manageUserAction(
   value?: string,
 ) {
   const current = await requireAdminSession();
-  if (id === current.user.id && (operation === "ban" || operation === "role"))
+  if (typeof id !== "string" || !id || id.length > 128)
+    return { success: false, message: "Invalid user." };
+  if (id === current.user.id)
     return {
       success: false,
-      message: "You cannot suspend or change your own role.",
+      message: "Manage your own account and sessions from your settings.",
     };
   try {
     const requestHeaders = await headers();
@@ -280,31 +279,19 @@ export async function manageUserAction(
         body: { userId: id },
       });
     } else return { success: false, message: "Invalid operation." };
-    revalidatePath("/admin", "layout");
-    return { success: true, message: "User updated." };
+    revalidatePath("/admin/users");
+    return {
+      success: true,
+      message:
+        operation === "role"
+          ? "Role updated. Existing sessions were revoked."
+          : operation === "ban"
+            ? "User suspended."
+            : operation === "unban"
+              ? "User access restored."
+              : "User sessions revoked.",
+    };
   } catch (error) {
     return failure(error);
   }
-}
-
-export async function listAccountSessions(admin = false) {
-  const current = admin ? await requireAdminSession() : await requireSession();
-  return db
-    .select({
-      id: sessions.id,
-      name: users.name,
-      email: users.email,
-      ipAddress: sessions.ipAddress,
-      userAgent: sessions.userAgent,
-      expiresAt: sessions.expiresAt,
-      updatedAt: sessions.updatedAt,
-    })
-    .from(sessions)
-    .innerJoin(users, eq(users.id, sessions.userId))
-    .where(
-      and(
-        gt(sessions.expiresAt, new Date()),
-        ...(admin ? [] : [eq(sessions.userId, current.user.id)]),
-      ),
-    );
 }

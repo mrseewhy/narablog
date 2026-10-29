@@ -6,7 +6,7 @@ const emailIndex = process.argv.indexOf("--email");
 const email = process.argv[emailIndex + 1];
 if (emailIndex < 0 || !email || !email.includes("@")) {
   console.error(
-    "Usage: npm run auth:bootstrap -- --email verified@example.com",
+    "Usage: npm run auth:bootstrap -- --email account@example.com",
   );
   process.exit(1);
 }
@@ -24,15 +24,14 @@ try {
       "An admin already exists. Use an authenticated admin to manage roles.",
     );
   const found = await client.query(
-    'SELECT id, email_verified, banned FROM "user" WHERE lower(email) = lower($1) FOR UPDATE',
+    'SELECT id, banned FROM "user" WHERE lower(email) = lower($1) FOR UPDATE',
     [email],
   );
   if (
     found.rowCount !== 1 ||
-    !found.rows[0].email_verified ||
     found.rows[0].banned
   )
-    throw new Error("Register and verify an active account first.");
+    throw new Error("Register an active account first.");
   await client.query(
     'UPDATE "user" SET role=$1, updated_at=now() WHERE id=$2',
     [ROLES.ADMIN, found.rows[0].id],

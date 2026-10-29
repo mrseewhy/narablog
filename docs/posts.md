@@ -1,7 +1,7 @@
 # Posts and publishing
 
 Verified accounts create posts at `/dashboard/posts/create`. Admins can manage
-all posts at `/admin/posts` and assign an active, verified author. Ordinary
+all posts at `/admin/posts` and assign an active author. Ordinary
 accounts can only read, update, and delete their own private posts. A submitted
 author ID cannot override that restriction. Admin edits keep the existing
 author unless another author is explicitly selected.

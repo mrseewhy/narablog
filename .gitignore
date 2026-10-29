@@ -44,3 +44,4 @@ next-env.d.ts
 !.env.example
 
 /.next-auth-e2e.tsconfig.json
+/.seed-credentials.json

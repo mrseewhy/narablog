@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import AuthField from "../../_component/AuthField";
 import { FormEvent } from "react";
 import * as z from "zod";
-import { useRouter } from "next/navigation";
 
 import { signUpFormSchema } from "@/lib/data/validation/signup.validate";
 import React from "react";
@@ -16,7 +15,6 @@ const SignUpForm = () => {
     Partial<Record<keyof z.infer<typeof signUpFormSchema>, string[]>>
   >({});
   const [loading, setLoading] = React.useState(false);
-  const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name } = e.target;
@@ -49,7 +47,7 @@ const SignUpForm = () => {
         }
         return;
       }
-      router.push("/verify-email");
+      window.location.replace("/redirect");
     } catch {
       toast.error("Something went wrong. Try again!");
     } finally {

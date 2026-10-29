@@ -20,6 +20,7 @@ let output = "";
 const passed = [];
 const mailOffsets = new Map();
 const password = "SecurePass1!";
+const cronSecret = randomBytes(24).toString("hex");
 let base;
 class Browser {
   cookies = new Map();
@@ -87,20 +88,9 @@ async function signup(email) {
     name: "Test Account",
     email,
     password,
-    callbackURL: "/sign-in?verified=1",
   });
   assert.equal(result.status, 200, "signup should succeed");
-  assert.equal(
-    result.data.token,
-    null,
-    "unverified registration must not create a session",
-  );
-  const link = await mail("verify-email", email);
-  assert.equal(
-    (await browser.request(link)).status,
-    302,
-    "verification should redirect",
-  );
+  assert.ok(result.data.token, "registration should create a session");
   return browser;
 }
 async function signin(browser, email, pass = password) {
@@ -190,6 +180,7 @@ try {
         DATABASE_URL: scoped.toString(),
         BETTER_AUTH_URL: base,
         BETTER_AUTH_SECRET: randomBytes(32).toString("base64"),
+        CRON_SECRET: cronSecret,
         AUTH_E2E_DIST_DIR: ".next-auth-e2e",
         AUTH_E2E_TSCONFIG: ".next-auth-e2e.tsconfig.json",
         NEXT_TELEMETRY_DISABLED: "1",
@@ -280,41 +271,32 @@ try {
     await clearLimits();
   });
   let alice, bob, admin;
-  await step("verification, default role, and cookie security", async () => {
+  await step("flat registration creates an active user session", async () => {
     const email = "alice@example.test";
-    const result = await guest.request(api("/sign-up/email"), {
+    alice = new Browser();
+    const result = await alice.request(api("/sign-up/email"), {
       name: "Alice Test",
       email,
       password,
-      callbackURL: "/sign-in?verified=1",
     });
     assert.equal(
       result.status,
       200,
       `registration failed: ${result.data?.code || result.status}`,
     );
-    assert.equal(result.data.token, null);
-    assert.equal(
-      (await guest.request(api("/sign-in/email"), { email, password })).status,
-      403,
-    );
-    assert.equal(
-      (await guest.request(await mail("verify-email", email))).status,
-      302,
-    );
-    alice = new Browser();
-    const signed = await signin(alice, email);
+    assert.ok(result.data.token);
     assert.ok(
-      signed.headers
+      result.headers
         .getSetCookie()
         .some((c) => /httponly/i.test(c) && /samesite=lax/i.test(c)),
     );
+    assert.equal((await alice.request("/dashboard")).status, 200);
     const user = await pool.query(
       'SELECT role,email_verified FROM "user" WHERE email=$1',
       [email],
     );
     assert.equal(user.rows[0].role, "user");
-    assert.equal(user.rows[0].email_verified, true);
+    assert.equal(user.rows[0].email_verified, false);
   });
   await step("user cannot access admin API or admin routes", async () => {
     assert.equal((await alice.request(api("/admin/list-users"))).status, 403);
@@ -759,14 +741,15 @@ try {
         created.text.includes('"success":true'),
         "admin creation action should succeed",
       );
-      await guest.request(await mail("verify-email", "invited@example.test"));
       const {
         rows: [invited],
       } = await pool.query(
         'SELECT id,email_verified FROM "user" WHERE email=$1',
         ["invited@example.test"],
       );
-      assert.ok(invited.email_verified);
+      assert.equal(invited.email_verified, false);
+      const invitedBrowser = new Browser();
+      await signin(invitedBrowser, "invited@example.test");
       await admin.request("/admin/users");
       const promoted = await action(admin, "/admin/users", "manageUserAction", [
         invited.id,
@@ -778,6 +761,103 @@ try {
         rows: [changed],
       } = await pool.query('SELECT role FROM "user" WHERE id=$1', [invited.id]);
       assert.equal(changed.role, "admin");
+    },
+  );
+  await step(
+    "admin user pages search, filter, and clamp out-of-range pages",
+    async () => {
+      await pool.query(`
+      INSERT INTO "user" (id, name, email, email_verified, role, banned)
+      SELECT 'list-fixture-' || n, 'List member ' || n,
+        'list-member-' || n || '@example.test', true,
+        CASE WHEN n % 2 = 0 THEN 'admin' ELSE 'user' END,
+        n % 3 = 0
+      FROM generate_series(1, 27) AS n
+    `);
+      const first = await admin.request("/admin/users?page=1");
+      assert.equal(first.status, 200);
+    assert.ok(first.text.replace(/<!--.*?-->/gs, "").includes("Page 1 of 2"));
+      const second = await admin.request("/admin/users?page=2");
+      assert.equal(second.status, 200);
+    assert.ok(second.text.replace(/<!--.*?-->/gs, "").includes("Page 2 of 2"));
+      const clamped = await admin.request("/admin/users?page=99999");
+    assert.ok(clamped.text.replace(/<!--.*?-->/gs, "").includes("Page 2 of 2"));
+      assert.ok(!clamped.text.includes("No accounts match these filters"));
+      const filtered = await admin.request(
+        "/admin/users?q=List%20member%2024&role=admin&status=suspended",
+      );
+      assert.ok(filtered.text.includes("List member 24"));
+      assert.ok(!filtered.text.includes("List member 25"));
+      const literal = await admin.request("/admin/users?q=%25");
+      assert.ok(literal.text.includes("No accounts match these filters"));
+    },
+  );
+  await step(
+    "user management actions enforce admin and self boundaries",
+    async () => {
+      const {
+        rows: [self],
+      } = await pool.query('SELECT id FROM "user" WHERE email=$1', [
+        "admin@example.test",
+      ]);
+      const denied = await action(alice, "/admin/users", "manageUserAction", [
+        "list-fixture-1",
+        "role",
+        "admin",
+      ]);
+      assert.equal(denied.status, 307);
+      for (const args of [
+        [self.id, "role", "user"],
+        [self.id, "ban"],
+        [self.id, "revoke"],
+      ]) {
+        const result = await action(
+          admin,
+          "/admin/users",
+          "manageUserAction",
+          args,
+        );
+        assert.ok(result.text.includes('"success":false'));
+      }
+      const {
+        rows: [unchanged],
+      } = await pool.query('SELECT role,banned FROM "user" WHERE id=$1', [
+        self.id,
+      ]);
+      assert.equal(unchanged.role, "admin");
+      assert.equal(unchanged.banned, false);
+      const target = "list-fixture-1";
+      let result = await action(admin, "/admin/users", "manageUserAction", [
+        target,
+        "role",
+        "admin",
+      ]);
+      assert.ok(result.text.includes('"success":true'));
+      assert.equal(
+        (await pool.query('SELECT role FROM "user" WHERE id=$1', [target]))
+          .rows[0].role,
+        "admin",
+      );
+      result = await action(admin, "/admin/users", "manageUserAction", [
+        target,
+        "ban",
+      ]);
+      assert.ok(result.text.includes('"success":true'));
+      assert.equal(
+        (await pool.query('SELECT banned FROM "user" WHERE id=$1', [target]))
+          .rows[0].banned,
+        true,
+      );
+      result = await action(admin, "/admin/users", "manageUserAction", [
+        target,
+        "unban",
+      ]);
+      assert.ok(result.text.includes('"success":true'));
+      assert.equal(
+        (await pool.query('SELECT banned FROM "user" WHERE id=$1', [target]))
+          .rows[0].banned,
+        false,
+      );
     },
   );
   await step(
@@ -809,6 +889,34 @@ try {
       );
     },
   );
+  await step("active sessions can be revoked without ending the current session", async () => {
+    await clearLimits();
+    const other = new Browser();
+    await signin(other, "alice@example.test");
+    const otherSession = (await other.request(api("/get-session"))).data.session;
+    const page = await alice.request("/dashboard/profile");
+    assert.equal(page.status, 200);
+    assert.ok(page.text.includes(otherSession.id));
+    const result = await action(alice, "/dashboard/profile", "revokeOtherSessionsAction", []);
+    assert.ok(result.text.includes('"success":true'));
+    assert.equal((await other.request(api("/get-session"))).data, null);
+    assert.ok((await alice.request(api("/get-session"))).data);
+  });
+  await step("expired sessions are hidden and removed by cleanup", async () => {
+    await clearLimits();
+    const other = new Browser();
+    await signin(other, "alice@example.test");
+    const sessionId = (await other.request(api("/get-session"))).data.session.id;
+    await pool.query("UPDATE session SET expires_at=timezone('UTC', statement_timestamp()) - interval '1 minute' WHERE id=$1", [sessionId]);
+    const page = await alice.request("/dashboard/profile");
+    assert.equal(page.status, 200);
+    assert.ok(!page.text.includes(sessionId));
+    assert.equal((await other.request(api("/get-session"))).data, null);
+    assert.equal((await guest.request("/api/cron/cleanup")).status, 401);
+    const result = await guest.request("/api/cron/cleanup", undefined, { headers: { Authorization: `Bearer ${cronSecret}` } });
+    assert.equal(result.status, 200);
+    assert.equal((await pool.query("SELECT id FROM session WHERE id=$1", [sessionId])).rowCount, 0);
+  });
   await step(
     "password change requires current password and revokes other sessions",
     async () => {
@@ -904,7 +1012,7 @@ try {
     },
   );
   await step(
-    "email changes require old-address approval and new-address verification",
+    "unverified accounts verify the new address when changing email",
     async () => {
       await clearLimits();
       assert.equal(
@@ -921,7 +1029,6 @@ try {
         ["bob@example.test"],
       );
       assert.equal(before.rowCount, 1);
-      await bob.request(await mail("change-email", "bob@example.test"));
       await bob.request(await mail("verify-email", "bob-new@example.test"));
       const after = await pool.query(
         'SELECT email_verified FROM "user" WHERE email=$1',
@@ -1129,6 +1236,65 @@ try {
       assert.ok(deleted.text.includes('"success":true'));
     },
   );
+  await step("home feed uses a stable ten-post cursor", async () => {
+    const { rows: [author] } = await pool.query('SELECT id FROM "user" WHERE email=$1', ["alice@example.test"]);
+    const { rows: [category] } = await pool.query("SELECT public_id FROM categories WHERE slug='e2e'");
+    await pool.query(`INSERT INTO posts(title,slug,content,author_id,category_id,status,published_at,updated_at)
+      SELECT 'Cursor story ' || n, 'cursor-story-' || n,
+        '[{"type":"paragraph","content":[{"type":"text","text":"Cursor fixture"}]}]'::jsonb,
+        $1,$2,'Published',timezone('UTC',statement_timestamp()),timezone('UTC',statement_timestamp())
+      FROM generate_series(1,12) AS n`, [author.id, category.public_id]);
+    let cursor;
+    const seen = new Set();
+    let pages = 0;
+    do {
+      const response = await guest.request(`/api/posts${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`);
+      assert.equal(response.status, 200);
+      assert.ok(response.data.items.length <= 10);
+      if (pages === 0) assert.equal(response.data.items.length, 10);
+      for (const post of response.data.items) {
+        assert.ok(!seen.has(post.id));
+        seen.add(post.id);
+      }
+      cursor = response.data.nextCursor;
+      pages++;
+      assert.ok(pages < 5);
+    } while (cursor);
+    assert.equal(seen.size, 13);
+    assert.equal((await guest.request("/api/posts?cursor=invalid")).status, 400);
+  });
+  await step("public feeds and metadata use published records", async () => {
+    const { rows: [post] } = await pool.query("SELECT slug FROM posts WHERE title='Alice published post'");
+    const home = await guest.request("/");
+    const categories = await guest.request("/categories");
+    const category = await guest.request("/categories/e2e");
+    const article = await guest.request(`/blog/${post.slug}`);
+    assert.equal(home.status, 200);
+    assert.ok(home.text.includes("Cursor story"));
+    assert.ok(!home.text.includes("Understanding Next.js 16"));
+    assert.equal(categories.status, 200);
+    assert.ok(categories.text.includes("E2E"));
+    assert.equal(category.status, 200);
+    assert.ok(category.text.includes("Alice published post"));
+    assert.equal(article.status, 200);
+    assert.ok(article.text.includes("Alice published post | NaroBlog"));
+    assert.ok(article.text.includes(`rel="canonical"`));
+    const missing = await guest.request("/categories/not-a-category");
+    assert.ok(missing.text.includes("Page not found"));
+    assert.ok(missing.text.includes("noindex"));
+  });
+  await step("dashboard activity is backed by account and post records", async () => {
+    const own = await alice.request("/dashboard/activity");
+    const all = await admin.request("/admin/activities");
+    assert.equal(own.status, 200);
+    assert.ok(own.text.includes("Alice published post"));
+    assert.ok(own.text.includes("Account created"));
+    assert.ok(!own.text.includes("Amara Okafor"));
+    assert.equal(all.status, 200);
+    assert.ok(all.text.includes("Alice published post"));
+    assert.ok(all.text.includes("Session started"));
+    assert.equal((await guest.request("/admin/activities")).status, 307);
+  });
   await step(
     "publishing, unpublishing, and deletion refresh public articles",
     async () => {

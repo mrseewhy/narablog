@@ -21,8 +21,6 @@ export async function proxy(request: NextRequest) {
 
     if (!session) return redirectTo(request, "/sign-in");
 
-    if (!session.user.emailVerified) return redirectTo(request, "/verify-email");
-
     const { role, banned, banExpires } = session.user;
     if (banned && (!banExpires || new Date(banExpires).getTime() > Date.now())) {
       return redirectTo(request, "/unauthorized");

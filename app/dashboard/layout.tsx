@@ -1,6 +1,6 @@
 import { Suspense, type ReactNode } from "react";
 import { redirect } from "next/navigation";
-import type { Viewport } from "next";
+import type { Metadata, Viewport } from "next";
 import { AdminShell } from "@/components/site/AdminShell";
 import { isAdmin, requireSession } from "@/lib/data/security/session";
 import { ROLES } from "@/lib/roles";
@@ -9,6 +9,7 @@ import { DashboardShellSkeleton } from "@/components/site/dashboard-shell-skelet
 export const viewport: Viewport = {
   interactiveWidget: "resizes-content",
 };
+export const metadata: Metadata = { title: "Dashboard", robots: { index: false, follow: false } };
 
 async function ProtectedUserShell({ children }: { children: ReactNode }) {
   const { user } = await requireSession();

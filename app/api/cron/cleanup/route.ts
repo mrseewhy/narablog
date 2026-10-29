@@ -1,3 +1,4 @@
+import { cleanupExpiredSessions } from "@/lib/data/dal/session.dal";
 import { cleanupExpiredRateLimits } from "@/lib/data/security/ratelimit";
 import { NextResponse } from "next/server";
 
@@ -13,6 +14,7 @@ export async function GET(request: Request) {
 
   try {
     await cleanupExpiredRateLimits();
+    await cleanupExpiredSessions();
 
     return NextResponse.json({ success: true });
   } catch {

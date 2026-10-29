@@ -19,7 +19,7 @@ const CategoryDetails = async ({
 
   return (
     <>
-      <header className="mx-auto w-full px-4 pt-12">
+      <header className="mx-auto w-full max-w-7xl px-4 pt-12">
         <p className="text-sm font-medium text-primary">Category</p>
         <h1 className="mt-2 text-4xl font-bold tracking-tight md:text-5xl">
           {category.name}

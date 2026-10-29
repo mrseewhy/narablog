@@ -83,11 +83,84 @@ Verification passed: 29 integration checks, 9 unit checks, ESLint, TypeScript,
 and the production build. Integration data used a disposable schema, which was
 removed afterward.
 
-## Remaining modules, in order
+## 5. Admin user management
 
-5. Admin user management: role/status controls, pagination, permission boundaries.
-6. Session management: device lists, revocation, expiry, current-session behavior.
-7. Dashboards: statistics and remaining demo activity.
-8. Public site: navigation, feeds, metadata, accessibility, and mobile layouts.
-9. Deployment and final regression checks: configuration, migrations, and complete
-   cross-module checks. Deployment itself requires a separate request.
+Reviewed on 2026-10-28. Added database search and role/status filters to the
+admin user list. Counts and pagination use the same filters, with deterministic
+ordering and out-of-range pages clamped to the last available page. The list
+returns only display fields and has a retryable error state.
+
+Role and suspension controls now describe their effects before confirmation.
+The action blocks changes to an administrator's own account and sessions;
+role changes revoke the affected account's existing sessions. Account creation
+uses shared signup validation and accessible field feedback. See [admin user
+management](admin-users.md).
+
+Verification passed: 31 integration checks, 9 unit checks, ESLint, TypeScript,
+and the production build. The disposable integration schema was removed.
+
+## 6. Session management
+
+Reviewed on 2026-10-28. Account session lists use database time to exclude
+expired records, show the current session first, and display expiry. The admin
+bulk sign-out action now states that it affects only the admin's own other
+devices. Session revocation accepts an ID while bearer tokens remain on the
+server; ordinary users can affect only their own sessions. Revoking the current
+session returns the browser to sign-in. The protected daily cleanup job removes
+expired session rows. Session and profile pages have retryable error states.
+See [session behavior and expiry](sessions.md).
+
+Verification passed: 33 integration checks, 9 unit checks, ESLint, TypeScript,
+and the production build. The disposable integration schema was removed.
+
+## 7. Dashboards
+
+Reviewed on 2026-10-28. Dashboard counts already came from stored records.
+Replaced both demo activity timelines with account, post, and active-session
+events derived from database records. User activity is owner-scoped; the admin
+view covers all accounts. The visible counts describe at most 100 recent
+events. Retryable error states and loading skeletons cover both routes. See
+[dashboard and public-site behavior](dashboards-and-public-site.md) for the
+limits of a record-derived timeline.
+
+## 8. Public site
+
+Reviewed on 2026-10-28. Removed demo post fallbacks, mock images, and unused
+demo files. Home and category feeds show published records; category links use
+stored slugs. Added route metadata and canonical URLs for home, categories,
+category feeds, articles, and contact. The navigation and footer wrap on narrow
+screens, and the public layout gives pages their full responsive width. The
+contact page no longer promises an unconfigured email address or response time.
+
+## 9. Final regression and deployment review
+
+Reviewed on 2026-10-28. Migration consistency, ESLint, TypeScript, unit checks,
+and the production build passed. The streamed not-found assertion was aligned
+with this Next.js version's documented HTTP 200 plus `noindex` behavior.
+Deployment was not requested or performed.
+
+## Temporary registration mode
+
+On 2026-10-28, registration was changed to create a session immediately
+without sending verification email. Public and admin-created accounts can sign
+in without email delivery. The private-route and author checks no longer treat
+`email_verified` as an access gate. Password recovery and email changes still
+require email delivery. Account ownership by address is unconfirmed until
+verification is restored. The later full integration run covers this mode.
+
+## Demo seed and home feed
+
+Completed on 2026-10-29. The local-only, repeatable seed created two regular
+accounts, one admin, five categories, and fifty published posts. Database
+verification confirmed each category has ten published posts and all three
+generated credentials match the stored password hashes. Credentials are kept
+in an ignored, owner-readable local file.
+
+The home feed now renders ten posts initially and loads additional pages as a
+scroll sentinel enters view. Cursor pagination orders by publication time and
+post ID, and a manual load button remains available. See [demo seed and
+scrolling feed](demo-seed-and-feed.md).
+
+Final verification passed: 36 integration checks, 9 unit checks, ESLint,
+TypeScript, and the production build. The disposable integration schema was
+removed.
